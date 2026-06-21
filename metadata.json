@@ -1,0 +1,8 @@
+{
+  "name": "Remix: Terserah - Gen Z Food Picker",
+  "description": "Solusi cerdas buat Gen Z yang bingung mau makan apa. Rekomendasi makanan random, filter budget, dan AI Chatbot \u0027Bot Terserah\u0027 yang ngerti cuaca \u0026 kondisi kantong kamu.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Master - Secret Feature</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --accent: #e94560;
+            --gold: #f5c518;
+            --white: #ffffff;
+            --text-dim: #a8b2d8;
+            --board-light: #ebecd0;
+            --board-dark: #779556;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--white);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .badge {
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: var(--accent);
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        h1 {
+            font-size: 28px;
+            background: linear-gradient(90deg, var(--gold), #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 5px;
+        }
+
+        .status-bar {
+            background: var(--card);
+            padding: 15px;
+            border-radius: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .turn-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--gold);
+        }
+
+        .timer {
+            font-family: monospace;
+            font-size: 18px;
+            color: var(--gold);
+        }
+
+        #board {
+            width: 100%;
+            aspect-ratio: 1/1;
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            touch-action: none;
+        }
+
+        .square {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .square.light { background-color: var(--board-light); }
+        .square.dark { background-color: var(--board-dark); }
+        
+        .square.highlight {
+            background-color: rgba(255, 255, 0, 0.4) !important;
+        }
+
+        .square.last-move {
+            background-color: rgba(255, 255, 0, 0.2) !important;
+        }
+
+        .piece {
+            width: 90%;
+            height: 90%;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            z-index: 2;
+            transition: transform 0.1s;
+        }
+
+        .piece:active {
+            transform: scale(1.1);
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        button {
+            padding: 12px;
+            border-radius: 12px;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--gold), #ff6b6b);
+            color: white;
+            grid-column: span 2;
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.05);
+            color: var(--text-dim);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+        }
+
+        button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: var(--card);
+            padding: 30px;
+            border-radius: 25px;
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+
+        .modal h2 {
+            margin-bottom: 10px;
+            color: var(--gold);
+        }
+
+        .modal p {
+            color: var(--text-dim);
+            margin-bottom: 20px;
+        }
+
+        .mode-selector {
+            background: var(--card);
+            padding: 20px;
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .mode-option {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 15px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .mode-option.active {
+            border-color: var(--gold);
+            background: rgba(245, 197, 24, 0.05);
+        }
+
+        .mode-icon {
+            font-size: 24px;
+        }
+
+        .mode-info h4 {
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+
+        .mode-info p {
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+
+        /* Piece Assets */
+        .p-w { background-image: url('https://upload.wikimedia.org/wikipedia/commons/4/45/Chess_plt45.svg'); }
+        .r-w { background-image: url('https://upload.wikimedia.org/wikipedia/commons/7/72/Chess_rlt45.svg'); }
+        .n-w { background-image: url('https://upload.wikimedia.org/wikipedia/commons/7/70/Chess_nlt45.svg'); }
+        .b-w { background-image: url('https://upload.wikimedia.org/wikipedia/commons/b/b1/Chess_blt45.svg'); }
+        .q-w { background-image: url('https://upload.wikimedia.org/wikipedia/commons/1/15/Chess_qlt45.svg'); }
+        .k-w { background-image: url('https://upload.wikimedia.org/wikipedia/commons/4/42/Chess_klt45.svg'); }
+        
+        .p-b { background-image: url('https://upload.wikimedia.org/wikipedia/commons/c/c7/Chess_pdt45.svg'); }
+        .r-b { background-image: url('https://upload.wikimedia.org/wikipedia/commons/f/ff/Chess_rdt45.svg'); }
+        .n-b { background-image: url('https://upload.wikimedia.org/wikipedia/commons/e/ef/Chess_ndt45.svg'); }
+        .b-b { background-image: url('https://upload.wikimedia.org/wikipedia/commons/9/98/Chess_bdt45.svg'); }
+        .q-b { background-image: url('https://upload.wikimedia.org/wikipedia/commons/4/47/Chess_qdt45.svg'); }
+        .k-b { background-image: url('https://upload.wikimedia.org/wikipedia/commons/f/f0/Chess_kdt45.svg'); }
+
+        @media (max-width: 480px) {
+            h1 { font-size: 22px; }
+            .status-bar { padding: 10px; }
+            .piece { width: 95%; height: 95%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="badge">✨ Secret Feature</div>
+            <h1>♟ Chess Master</h1>
+        </header>
+
+        <div id="setup-screen" class="mode-selector">
+            <h3 style="text-align: center; margin-bottom: 10px;">Pilih Mode Permainan</h3>
+            
+            <div class="mode-option active" onclick="setMode('ai')">
+                <div class="mode-icon">🤖</div>
+                <div class="mode-info">
+                    <h4>Vs AI / Bot</h4>
+                    <p>Main santai melawan komputer (Offline)</p>
+                </div>
+            </div>
+
+            <div class="mode-option" onclick="setMode('pvp')">
+                <div class="mode-icon">👥</div>
+                <div class="mode-info">
+                    <h4>1 vs 1 (Lokal)</h4>
+                    <p>Main berdua dalam satu HP</p>
+                </div>
+            </div>
+
+            <div style="margin-top: 10px;">
+                <p style="font-size: 12px; color: var(--text-dim); margin-bottom: 8px;">Timer (Menit):</p>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-secondary" style="flex: 1;" onclick="setTimer(5)">5m</button>
+                    <button class="btn-secondary" style="flex: 1;" onclick="setTimer(10)">10m</button>
+                    <button class="btn-secondary" style="flex: 1;" onclick="setTimer(0)">No Timer</button>
+                </div>
+            </div>
+
+            <button class="btn-primary" onclick="startGame()" style="margin-top: 10px;">MULAI PERMAINAN</button>
+        </div>
+
+        <div id="game-screen" style="display: none; flex-direction: column; gap: 20px;">
+            <div class="status-bar">
+                <div class="turn-indicator">
+                    <div id="turn-dot" class="dot"></div>
+                    <span id="turn-text">Giliran Putih</span>
+                </div>
+                <div id="timer-display" class="timer">--:--</div>
+            </div>
+
+            <div id="board"></div>
+
+            <div class="controls">
+                <button class="btn-secondary" onclick="undoMove()">Undo</button>
+                <button class="btn-secondary" onclick="restartGame()">Restart</button>
+                <button class="btn-secondary" onclick="surrender()" style="grid-column: span 2; color: var(--accent);">Surrender</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="game-over-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="winner-text">Checkmate!</h2>
+            <p id="reason-text">Putih memenangkan pertandingan.</p>
+            <button class="btn-primary" onclick="location.reload()">MAIN LAGI</button>
+        </div>
+    </div>
+
+    <script>
+        const game = new Chess();
+        let boardEl = document.getElementById('board');
+        let selectedSquare = null;
+        let gameMode = 'ai';
+        let timeLimit = 0;
+        let timeLeft = 0;
+        let timerInterval = null;
+
+        function setMode(mode) {
+            gameMode = mode;
+            document.querySelectorAll('.mode-option').forEach(opt => {
+                opt.classList.remove('active');
+                if (opt.querySelector('h4').innerText.toLowerCase().includes(mode)) {
+                    opt.classList.add('active');
+                }
+            });
+        }
+
+        function setTimer(mins) {
+            timeLimit = mins * 60;
+            document.querySelectorAll('.btn-secondary').forEach(btn => {
+                if (btn.innerText.includes(mins + 'm') || (mins === 0 && btn.innerText === 'No Timer')) {
+                    btn.style.borderColor = 'var(--gold)';
+                } else {
+                    btn.style.borderColor = 'rgba(255,255,255,0.1)';
+                }
+            });
+        }
+
+        function startGame() {
+            document.getElementById('setup-screen').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'flex';
+            
+            if (timeLimit > 0) {
+                timeLeft = timeLimit;
+                startTimer();
+            } else {
+                document.getElementById('timer-display').innerText = '∞';
+            }
+            
+            createBoard();
+            updateBoard();
+        }
+
+        function startTimer() {
+            updateTimerDisplay();
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay();
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    endGame('Waktu Habis', game.turn() === 'w' ? 'Hitam Menang' : 'Putih Menang');
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const mins = Math.floor(timeLeft / 60);
+            const secs = timeLeft % 60;
+            document.getElementById('timer-display').innerText = 
+                `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function createBoard() {
+            boardEl.innerHTML = '';
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const square = document.createElement('div');
+                    const isLight = (r + c) % 2 === 0;
+                    square.className = `square ${isLight ? 'light' : 'dark'}`;
+                    square.dataset.pos = String.fromCharCode(97 + c) + (8 - r);
+                    square.onclick = () => handleSquareClick(square.dataset.pos);
+                    boardEl.appendChild(square);
+                }
+            }
+        }
+
+        function updateBoard() {
+            const board = game.board();
+            const squares = document.querySelectorAll('.square');
+            
+            squares.forEach(sq => {
+                sq.innerHTML = '';
+                sq.classList.remove('highlight', 'last-move');
+            });
+
+            // Show last move
+            const history = game.history({ verbose: true });
+            if (history.length > 0) {
+                const lastMove = history[history.length - 1];
+                document.querySelector(`[data-pos="${lastMove.from}"]`).classList.add('last-move');
+                document.querySelector(`[data-pos="${lastMove.to}"]`).classList.add('last-move');
+            }
+
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const piece = board[r][c];
+                    if (piece) {
+                        const pos = String.fromCharCode(97 + c) + (8 - r);
+                        const sq = document.querySelector(`[data-pos="${pos}"]`);
+                        const pieceEl = document.createElement('div');
+                        pieceEl.className = `piece ${piece.type}-${piece.color}`;
+                        sq.appendChild(pieceEl);
+                    }
+                }
+            }
+
+            const isWhiteTurn = game.turn() === 'w';
+            document.getElementById('turn-dot').style.background = isWhiteTurn ? 'var(--white)' : '#333';
+            document.getElementById('turn-text').innerText = isWhiteTurn ? 'Giliran Putih' : 'Giliran Hitam';
+
+            if (game.game_over()) {
+                let winner = 'Draw';
+                let reason = 'Permainan berakhir seri.';
+                if (game.in_checkmate()) {
+                    winner = isWhiteTurn ? 'Hitam Menang!' : 'Putih Menang!';
+                    reason = 'Checkmate!';
+                }
+                endGame(winner, reason);
+            } else if (gameMode === 'ai' && !isWhiteTurn) {
+                setTimeout(makeAIMove, 500);
+            }
+        }
+
+        function handleSquareClick(pos) {
+            if (gameMode === 'ai' && game.turn() === 'b') return;
+
+            const moves = game.moves({ square: pos, verbose: true });
+            
+            if (selectedSquare === pos) {
+                selectedSquare = null;
+                updateBoard();
+                return;
+            }
+
+            if (selectedSquare) {
+                const move = game.move({
+                    from: selectedSquare,
+                    to: pos,
+                    promotion: 'q'
+                });
+
+                if (move) {
+                    selectedSquare = null;
+                    updateBoard();
+                    return;
+                }
+            }
+
+            if (moves.length > 0) {
+                selectedSquare = pos;
+                updateBoard();
+                document.querySelector(`[data-pos="${pos}"]`).classList.add('highlight');
+                moves.forEach(m => {
+                    document.querySelector(`[data-pos="${m.to}"]`).classList.add('highlight');
+                });
+            } else {
+                selectedSquare = null;
+                updateBoard();
+            }
+        }
+
+        function makeAIMove() {
+            const moves = game.moves();
+            if (moves.length === 0) return;
+            
+            // Simple AI: Prefer captures, then random
+            const captures = moves.filter(m => m.includes('x'));
+            const move = captures.length > 0 
+                ? captures[Math.floor(Math.random() * captures.length)]
+                : moves[Math.floor(Math.random() * moves.length)];
+            
+            game.move(move);
+            updateBoard();
+        }
+
+        function undoMove() {
+            game.undo();
+            if (gameMode === 'ai') game.undo();
+            updateBoard();
+        }
+
+        function restartGame() {
+            if (confirm('Mulai ulang permainan?')) {
+                location.reload();
+            }
+        }
+
+        function surrender() {
+            const winner = game.turn() === 'w' ? 'Hitam Menang!' : 'Putih Menang!';
+            endGame(winner, 'Lawan menyerah.');
+        }
+
+        function endGame(winner, reason) {
+            clearInterval(timerInterval);
+            document.getElementById('winner-text').innerText = winner;
+            document.getElementById('reason-text').innerText = reason;
+            document.getElementById('game-over-modal').style.display = 'flex';
+        }
+    </script>
+</body>
+</html>
